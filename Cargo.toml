@@ -8,7 +8,7 @@ repository = "https://github.com/powerman/filterway"
 license = "MIT"
 
 [dependencies]
-aargvark = "0.7"
+aargvark = "0.9"
 defer = "0.2"
 libc = "0.2"
 sd-notify = "0.4"

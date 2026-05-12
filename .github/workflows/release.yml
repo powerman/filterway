@@ -51,6 +51,10 @@ jobs:
         with:
           tool: cargo-zigbuild
 
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: zig
+
       - name: Build binary
         id: build
         env:

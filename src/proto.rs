@@ -8,7 +8,7 @@ fn read(reader: &mut impl std::io::Read, size: usize) -> std::io::Result<Vec<u8>
 pub struct Packet {
     pub id: u32,
     pub opcode: u16,
-    pub body: std::vec::Vec<u8>,
+    pub body: Vec<u8>,
 }
 
 // header word1 + word2

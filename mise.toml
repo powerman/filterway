@@ -1,23 +1,42 @@
 [settings]
-lockfile = true
+lockfile = true # DO NOT FORGET TO `touch mise.lock` if mise.lock does not exist!
 
 
 [tools]
-"cargo:cargo-nextest" = "latest"
 rust = 'nightly'
 
+#--- Lint
+# Static checker for GitHub Actions workflow files.
+actionlint = 'latest'
+
+#--- Test
+"cargo:cargo-nextest" = "latest"
+# Code coverage instrumentation.
+"cargo:cargo-llvm-cov" = "latest"
+
+#--- Release
+# A highly customizable Changelog Generator that follows Conventional Commit specifications.
+git-cliff = 'latest'
+# GitHub's official command line tool.
+gh = 'latest'
+
+
+[tasks.'changelog:skip-commit']
+description = 'Add commit hash to .cliffignore to exclude from CHANGELOG'
+usage = 'arg "<commit>" help="Git revision (e.g. HEAD or a1b2c4d)"'
+run = 'git rev-parse --verify "${usage_commit}" >> .cliffignore'
 
 [tasks.fmt]
 description = 'Format all files'
-depends = ['fmt:rust']
+depends = ['fmt:*']
 
 [tasks.lint]
 description = 'Run all linters'
-depends = ['lint:rust']
+depends = ['lint:*']
 
 [tasks.test]
 description = 'Run all tests'
-depends = ['test:rust']
+depends = ['test:*']
 
 [tasks.default]
 description = 'Run all linters and tests'
@@ -26,7 +45,9 @@ depends = ['lint', 'test']
 [tasks.ci]
 description = 'Run all CI tasks'
 depends = ['fmt', 'lint', 'test']
+# Is working tree clean after fmt?
 run = '! git status --porcelain | tee /dev/stderr | grep -q .'
+run_windows = 'powershell -c "$status = git status --porcelain; if ($status) { $status; exit 1 }"'
 
 [tasks.build]
 description = 'Build release binary'
@@ -36,10 +57,23 @@ run = 'cargo build --release'
 description = 'Format Rust code'
 run = 'cargo fmt --all'
 
+[tasks.'lint:workflows']
+description = 'Lint GitHub Action workflows'
+run = 'actionlint'
+
 [tasks.'lint:rust']
 description = 'Lint Rust code with clippy'
 run = 'cargo clippy --workspace --all-targets -- -D warnings'
 
 [tasks.'test:rust']
 description = 'Run Rust tests'
+wait_for = ['lint:*']                                 # Avoid interleaved output with linters.
 run = 'cargo nextest run --workspace --no-tests pass'
+
+[tasks.'cover:rust']
+description = 'Run Rust tests with LLVM coverage instrumentation'
+run = 'cargo llvm-cov --workspace'
+
+[tasks.'cover:rust:total']
+description = 'Output total Rust coverage percentage'
+run = "cargo llvm-cov report 2>/dev/null | awk '/^TOTAL/{print \"total: (lines) \" $10}'"

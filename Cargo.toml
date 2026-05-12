@@ -3,9 +3,9 @@ name = "filterway"
 version = "0.1.0"
 edition = "2021"
 description = "Filter/modify Wayland messages from clients"
-readme = "readme.md"
-repository = "https://github.com/andrewbaxter/filterway"
-license = "ISC"
+readme = "README.md"
+repository = "https://github.com/powerman/filterway"
+license = "MIT"
 
 [dependencies]
 aargvark = "0.7"

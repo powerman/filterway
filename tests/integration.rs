@@ -4,6 +4,7 @@ use std::process::Command;
 use std::time::{Duration, Instant};
 
 use filterway::proto::{self, read_packet, write_packet, Packet};
+use tempfile::tempdir;
 
 // ---------------------------------------------------------------------------
 // Proto functions over a real UnixStream pair
@@ -134,12 +135,9 @@ fn connect_with_retry(path: &std::path::Path, timeout: Duration) -> UnixStream {
 
 #[test]
 fn filterway_basic_passthrough() {
-    let dir = std::env::temp_dir().join(format!("filterway-it-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&dir);
-    std::fs::create_dir_all(&dir).unwrap();
-
-    let upstream = dir.join("upstream.sock");
-    let downstream = dir.join("downstream.sock");
+    let dir = tempdir().unwrap();
+    let upstream = dir.path().join("upstream.sock");
+    let downstream = dir.path().join("downstream.sock");
 
     // Start mock compositor (listener for filterway's upstream connection).
     let mock_listener = std::os::unix::net::UnixListener::bind(&upstream).unwrap();
@@ -200,17 +198,13 @@ fn filterway_basic_passthrough() {
             eprintln!("filterway stderr:\n{stderr}");
         }
     }
-    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]
 fn filterway_object_chain_and_app_id_replacement() {
-    let dir = std::env::temp_dir().join(format!("filterway-it-appid-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&dir);
-    std::fs::create_dir_all(&dir).unwrap();
-
-    let upstream = dir.join("upstream.sock");
-    let downstream = dir.join("downstream.sock");
+    let dir = tempdir().unwrap();
+    let upstream = dir.path().join("upstream.sock");
+    let downstream = dir.path().join("downstream.sock");
 
     // Mock compositor listener.
     let mock_listener = std::os::unix::net::UnixListener::bind(&upstream).unwrap();
@@ -369,5 +363,4 @@ fn filterway_object_chain_and_app_id_replacement() {
             eprintln!("filterway stderr:\n{stderr}");
         }
     }
-    let _ = std::fs::remove_dir_all(&dir);
 }

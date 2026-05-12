@@ -15,7 +15,6 @@ use {
         io::{Cursor, IoSlice, IoSliceMut},
         os::unix::net::{AncillaryData, SocketAncillary, UnixListener, UnixStream},
         path::PathBuf,
-        process::exit,
         sync::{Arc, Mutex},
         thread::spawn,
     },
@@ -384,9 +383,8 @@ fn handle_server_to_client(
     Ok(())
 }
 
-fn main() {
-    fn inner() -> Result<(), String> {
-        let args = vark::<Args>();
+fn main() -> Result<(), String> {
+    let args = vark::<Args>();
         let lock_path = args.downstream.with_extension("lock");
         let filelock = File::options()
             .mode(0o660)
@@ -472,13 +470,4 @@ fn main() {
                 }
             });
         }
-    }
-
-    match inner() {
-        Ok(_) => {}
-        Err(e) => {
-            eprintln!("{}", e);
-            exit(1);
-        }
-    }
 }

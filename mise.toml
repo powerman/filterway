@@ -28,6 +28,10 @@ description = 'Run all CI tasks'
 depends = ['fmt', 'lint', 'test']
 run = '! git status --porcelain | tee /dev/stderr | grep -q .'
 
+[tasks.build]
+description = 'Build release binary'
+run = 'cargo build --release'
+
 [tasks.'fmt:rust']
 description = 'Format Rust code'
 run = 'cargo fmt --all'

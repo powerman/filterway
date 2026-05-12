@@ -3,7 +3,7 @@ lockfile = true # DO NOT FORGET TO `touch mise.lock` if mise.lock does not exist
 
 
 [tools]
-rust = 'latest'
+rust = '1.95.0'
 
 #--- Lint
 # Static checker for GitHub Actions workflow files.
@@ -76,4 +76,4 @@ run = 'cargo llvm-cov --workspace'
 
 [tasks.'cover:rust:total']
 description = 'Output total Rust coverage percentage'
-run = "cargo llvm-cov report 2>/dev/null | awk '/^TOTAL/{print \"total: (lines) \" $10}'"
+run = "cargo llvm-cov report 2>/dev/null | awk '/^TOTAL/{print $NF}'"

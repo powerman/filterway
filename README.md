@@ -1,7 +1,7 @@
 # Filterway
 
 [![License MIT](https://img.shields.io/badge/license-MIT-royalblue.svg)](LICENSE)
-[![Rust](https://img.shields.io/badge/rustc-stable-blue?logo=rust)](https://www.rust-lang.org)
+[![Rust](https://img.shields.io/badge/rustc-1.95.0-blue?logo=rust)](https://www.rust-lang.org)
 [![Test](https://img.shields.io/github/actions/workflow/status/powerman/filterway/test.yml?label=test)](https://github.com/powerman/filterway/actions/workflows/test.yml)
 [![Coverage Status](https://raw.githubusercontent.com/powerman/filterway/gh-badges/coverage.svg)](https://github.com/powerman/filterway/actions/workflows/test.yml)
 [![Crates.io](https://img.shields.io/crates/v/filterway?logo=rust)](https://crates.io/crates/filterway)

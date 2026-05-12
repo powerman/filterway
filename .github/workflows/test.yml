@@ -31,7 +31,7 @@ jobs:
       - run: mise run ci
 
       # Run tests with coverage (on main only) for the badge below.
-      - run: cargo llvm-cov --workspace
+      - run: mise run cover:rust
         if: github.ref_name == 'main'
 
       - uses: powerman/.github/.github/actions/coverage-badge@main

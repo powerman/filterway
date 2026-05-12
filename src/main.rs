@@ -327,7 +327,7 @@ fn main() -> Result<(), String> {
         if args.debug.is_some() {
             eprintln!("Init detected as being systemd. Notifying of readiness.");
         }
-        if let Err(e) = sd_notify::notify(true, &[NotifyState::Ready]) {
+        if let Err(e) = sd_notify::notify(&[NotifyState::Ready]) {
             eprintln!("Warning, failed to notify systemd with error: {}", e);
         }
     }

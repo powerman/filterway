@@ -16,6 +16,9 @@ env:
 jobs:
   release-pr:
     uses: powerman/workflows/.github/workflows/release-pr.yml@v0.4.4
+    with:
+      version_cmd: |
+        sed -i "s/version = \".*\"/version = \"${RELEASE_PR_VERSION#v}\"/" Cargo.toml
     secrets:
       TOKEN: ${{ secrets.RELEASE_TOKEN }}
 
@@ -32,10 +35,6 @@ jobs:
         target:
           - x86_64-unknown-linux-gnu
           - aarch64-unknown-linux-gnu
-          - armv7-unknown-linux-gnueabihf
-          - powerpc64le-unknown-linux-gnu
-          - s390x-unknown-linux-gnu
-          - riscv64gc-unknown-linux-gnu
           - x86_64-apple-darwin
           - aarch64-apple-darwin
     steps:
@@ -67,25 +66,13 @@ jobs:
           echo "release_asset_dir=$ASSET_DIR" >> "$GITHUB_OUTPUT"
 
       - name: Install UPX
-        if: >-
-          ${{
-            !contains(matrix.target, 'darwin') &&
-            !contains(matrix.target, 's390x') &&
-            !contains(matrix.target, 'riscv64') &&
-            !contains(matrix.target, 'powerpc64le')
-          }}
+        if: ${{ !contains(matrix.target, 'darwin') }}
         uses: taiki-e/install-action@v2
         with:
           tool: upx
 
       - name: Compress binary with UPX
-        if: >-
-          ${{
-            !contains(matrix.target, 'darwin') &&
-            !contains(matrix.target, 's390x') &&
-            !contains(matrix.target, 'riscv64') &&
-            !contains(matrix.target, 'powerpc64le')
-          }}
+        if: ${{ !contains(matrix.target, 'darwin') }}
         working-directory: ${{ steps.build.outputs.release_asset_dir }}
         run: upx --best ./*
 

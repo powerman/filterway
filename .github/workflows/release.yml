@@ -51,9 +51,7 @@ jobs:
         with:
           tool: cargo-zigbuild
 
-      - uses: taiki-e/install-action@v2
-        with:
-          tool: zig
+      - uses: mlugg/setup-zig@v1
 
       - name: Build binary
         id: build

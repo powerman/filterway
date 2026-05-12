@@ -106,7 +106,10 @@ fn large_packet_over_unix_stream() {
     });
 
     let received = read_packet(&mut b).unwrap().unwrap();
-    assert_eq!(received, packet);
+    assert_eq!(received.id, u32::MAX);
+    assert_eq!(received.opcode, u16::MAX);
+    assert_eq!(received.body.len(), 65527);
+    assert!(received.body.iter().all(|&b| b == 0xAB));
     handle.join().unwrap();
 }
 

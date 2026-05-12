@@ -26,6 +26,8 @@ jobs:
       - uses: jdx/mise-action@v4
       - run: git reset --hard # Work around https://github.com/jdx/mise/discussions/8270.
 
+      - run: rustup component add clippy rustfmt
+
       - uses: Swatinem/rust-cache@v2
 
       - run: mise run ci

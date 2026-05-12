@@ -141,13 +141,9 @@ fn main() {
             if args.debug.is_some() {
                 eprintln!("Init detected as being systemd. Notifying of readiness.");
             }
-            let ready_result = sd_notify::notify(true, &[NotifyState::Ready]);
-            match ready_result {
-                Ok(_) => {}
-                Err(e) => {
-                    eprintln!("Warning, failed to notify systemd with error: {}", e);
-                }
-            };
+            if let Err(e) = sd_notify::notify(true, &[NotifyState::Ready]) {
+                eprintln!("Warning, failed to notify systemd with error: {}", e);
+            }
         }
 
         // Listen for connections

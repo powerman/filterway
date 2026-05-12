@@ -2,7 +2,6 @@
 
 use {
     aargvark::{vark, Aargvark},
-    proto::read_arg_string,
     rustix::{
         fd::{AsFd, FromRawFd, OwnedFd, RawFd},
         fs::{flock, OpenOptionsExt},
@@ -21,7 +20,7 @@ use {
     },
 };
 
-pub mod proto;
+use filterway::proto::{self, read_arg_string};
 
 #[derive(Aargvark, Clone)]
 struct Args {

@@ -53,6 +53,9 @@ jobs:
 
       - uses: mlugg/setup-zig@v2
 
+      - name: Add rust target
+        run: rustup target add ${{ matrix.target }}
+
       - name: Build binary
         id: build
         env:

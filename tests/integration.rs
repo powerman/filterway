@@ -371,3 +371,63 @@ fn filterway_title_replacement() {
 
     cleanup_filterway(filterway);
 }
+
+#[test]
+fn filterway_app_id_prefix() {
+    let dir = tempdir().unwrap();
+    let mock_listener =
+        std::os::unix::net::UnixListener::bind(dir.path().join("upstream.sock")).unwrap();
+
+    let (filterway, mut compositor, mut client) =
+        spawn_filterway(&["--app-id", "pfx-", "--prefix"], dir.path(), &mock_listener);
+
+    build_object_chain(&mut client, &mut compositor);
+
+    // Client sends XdgToplevel.set_app_id (opcode=3) with original app_id "my-app".
+    {
+        let mut body = vec![];
+        proto::write_arg_string(&mut body, "my-app".to_string()).unwrap();
+        write_packet(&mut client, &Packet { id: 5, opcode: 3, body }).unwrap();
+    }
+    let modified = read_packet(&mut compositor).unwrap().unwrap();
+
+    let mut cursor = std::io::Cursor::new(&modified.body[..]);
+    let replaced = proto::read_arg_string(&mut cursor).unwrap();
+    assert_eq!(
+        replaced.as_deref(),
+        Some("pfx-my-app"),
+        "app_id prefix failed: got {replaced:?}"
+    );
+
+    cleanup_filterway(filterway);
+}
+
+#[test]
+fn filterway_title_prefix() {
+    let dir = tempdir().unwrap();
+    let mock_listener =
+        std::os::unix::net::UnixListener::bind(dir.path().join("upstream.sock")).unwrap();
+
+    let (filterway, mut compositor, mut client) =
+        spawn_filterway(&["--title", "pfx-", "--prefix-title"], dir.path(), &mock_listener);
+
+    build_object_chain(&mut client, &mut compositor);
+
+    // Client sends XdgToplevel.set_title (opcode=2) with original title "my-title".
+    {
+        let mut body = vec![];
+        proto::write_arg_string(&mut body, "my-title".to_string()).unwrap();
+        write_packet(&mut client, &Packet { id: 5, opcode: 2, body }).unwrap();
+    }
+    let modified = read_packet(&mut compositor).unwrap().unwrap();
+
+    let mut cursor = std::io::Cursor::new(&modified.body[..]);
+    let replaced = proto::read_arg_string(&mut cursor).unwrap();
+    assert_eq!(
+        replaced.as_deref(),
+        Some("pfx-my-title"),
+        "title prefix failed: got {replaced:?}"
+    );
+
+    cleanup_filterway(filterway);
+}

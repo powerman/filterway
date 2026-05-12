@@ -76,4 +76,4 @@ run = 'cargo llvm-cov --workspace'
 
 [tasks.'cover:rust:total']
 description = 'Output total Rust coverage percentage'
-run = "cargo llvm-cov report 2>/dev/null | awk '/^TOTAL/{print $NF}'"
+run = "cargo llvm-cov report 2>/dev/null | awk '/^TOTAL/{print $10}'"

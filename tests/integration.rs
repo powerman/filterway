@@ -1420,6 +1420,95 @@ fn wlproxy_block_interfaces_does_not_leak_fds() {
 }
 
 #[test]
+fn wlproxy_block_interfaces_does_not_leak_fds_on_bind() {
+    use std::io::Read;
+    use std::os::unix::io::AsRawFd;
+    use uds::UnixStreamExt;
+
+    let dir = tempdir().unwrap();
+    let mock_listener =
+        std::os::unix::net::UnixListener::bind(dir.path().join("upstream.sock")).unwrap();
+
+    let (wlproxy, mut compositor, mut client) = spawn_wlproxy(
+        &["--block", "zwlr_layer_shell_v1"],
+        dir.path(),
+        &mock_listener,
+    );
+
+    // 1. Create registry.
+    {
+        let mut body = vec![];
+        proto::write_arg_uint(&mut body, 2).unwrap();
+        write_packet(
+            &mut client,
+            &Packet {
+                id: 1,
+                opcode: 1,
+                body,
+            },
+        )
+        .unwrap();
+    }
+    let _ = read_packet(&mut compositor).unwrap().unwrap();
+
+    // 2. Build a bind request for the blocked interface.
+    let mut bind_body = vec![];
+    proto::write_arg_uint(&mut bind_body, 0).unwrap();
+    proto::write_arg_string(&mut bind_body, "zwlr_layer_shell_v1").unwrap();
+    proto::write_arg_uint(&mut bind_body, 5).unwrap();
+    proto::write_arg_uint(&mut bind_body, 3).unwrap();
+    let mut packet_bytes = vec![];
+    write_packet(
+        &mut packet_bytes,
+        &Packet {
+            id: 2,
+            opcode: 0,
+            body: bind_body,
+        },
+    )
+    .unwrap();
+
+    // 3. Send the bind request with an FD attached.
+    let (dummy_send, mut dummy_recv) = std::os::unix::net::UnixStream::pair().unwrap();
+    let send_fd = dummy_send.as_raw_fd();
+    client.send_fds(&packet_bytes, &[send_fd]).unwrap();
+    drop(dummy_send);
+
+    // 4. Send a non-blocked message to verify wlproxy still works.
+    {
+        let mut body = vec![];
+        proto::write_arg_uint(&mut body, 999).unwrap();
+        write_packet(
+            &mut client,
+            &Packet {
+                id: 1,
+                opcode: 0,
+                body,
+            },
+        )
+        .unwrap();
+    }
+
+    // 5. Compositor receives the non-blocked message (NOT the blocked bind).
+    let received = read_packet(&mut compositor).unwrap().unwrap();
+    assert_eq!(
+        received.id, 1,
+        "only non-blocked message should reach compositor"
+    );
+    assert_eq!(received.opcode, 0);
+
+    // 6. Verify the FD was closed by trying to read from the other end.
+    //    After the send end was dropped and wlproxy closed its copy,
+    //    reading from dummy_recv should return Ok(0) (EOF).
+    let mut probe = [0u8; 1];
+    let n = dummy_recv.read(&mut probe).unwrap();
+    assert_eq!(n, 0, "dummy FD should have been closed by wlproxy");
+
+    drop(dummy_recv);
+    cleanup_wlproxy(wlproxy);
+}
+
+#[test]
 fn wlproxy_block_interfaces_and_title_prefix() {
     let dir = tempdir().unwrap();
     let mock_listener =

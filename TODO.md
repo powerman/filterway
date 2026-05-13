@@ -2,10 +2,10 @@
 
 ## Phase 1: Fix found problems
 
-- [ ] 1. Validate message_size >= 8 in read_packet (prevent underflow)
-- [ ] 2. Fix write_arg_uint error message (says "string length", should be "arg")
-- [ ] 3. Remove underscore from `_xdgwmbase_type_id` parameter (it IS used)
-- [ ] 4. Clear `cache_reg_id` on registry delete
+- [x] 1. Validate message_size >= 8 in read_packet (prevent underflow)
+- [x] 2. Fix write_arg_uint error message (says "string length", should be "arg")
+- [x] 3. Remove underscore from `_xdgwmbase_type_id` parameter (it IS used)
+- [x] 4. Clear `cache_reg_id` on registry delete
 
 ## Phase 2: Add missing tests
 

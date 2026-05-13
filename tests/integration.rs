@@ -931,6 +931,69 @@ fn wlproxy_fd_forwarding_server_to_client() {
     cleanup_wlproxy(wlproxy);
 }
 
+#[test]
+fn wlproxy_fd_forwarding_client_to_server() {
+    use std::io::Read;
+    use std::os::unix::io::{AsRawFd, FromRawFd, OwnedFd};
+    use uds::UnixStreamExt;
+
+    let dir = tempdir().unwrap();
+    let mock_listener =
+        std::os::unix::net::UnixListener::bind(dir.path().join("upstream.sock")).unwrap();
+
+    let (wlproxy, mut compositor, client) = spawn_wlproxy(&[], dir.path(), &mock_listener);
+
+    // Create a dummy socket pair — one end's FD is sent through wlproxy.
+    let (dummy_send, dummy_recv) = std::os::unix::net::UnixStream::pair().unwrap();
+    let send_fd = dummy_send.as_raw_fd();
+
+    // Build a minimal valid Wayland packet (empty body → 8 bytes total).
+    let mut packet_bytes = vec![];
+    write_packet(
+        &mut packet_bytes,
+        &Packet {
+            id: 1,
+            opcode: 0,
+            body: vec![],
+        },
+    )
+    .unwrap();
+    assert_eq!(packet_bytes.len(), 8);
+
+    // Client sends the packet with an FD attached, through wlproxy.
+    client.send_fds(&packet_bytes, &[send_fd]).unwrap();
+    drop(dummy_send);
+
+    // Compositor reads from upstream (via wlproxy).
+    // wlproxy should forward both data and the FD.
+    let mut buf = [0u8; 8];
+    let mut fd_buf = [0i32; 8];
+    let (n, nfds) = compositor.recv_fds(&mut buf, &mut fd_buf).unwrap();
+    assert!(nfds == 1, "FD should be forwarded by wlproxy");
+    assert!(fd_buf[0] > 0, "received FD should be valid");
+    if n < 8 {
+        compositor.read_exact(&mut buf[n..]).unwrap();
+    }
+
+    // Parse and verify the packet content.
+    let mut cursor = std::io::Cursor::new(&buf[..]);
+    let received = read_packet(&mut cursor).unwrap().unwrap();
+    assert_eq!(
+        received,
+        Packet {
+            id: 1,
+            opcode: 0,
+            body: vec![]
+        }
+    );
+
+    // Close the received FD.
+    drop(unsafe { OwnedFd::from_raw_fd(fd_buf[0]) });
+    drop(dummy_recv);
+
+    cleanup_wlproxy(wlproxy);
+}
+
 // ---------------------------------------------------------------------------
 // Interface blocking
 // ---------------------------------------------------------------------------

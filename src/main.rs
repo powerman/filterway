@@ -153,7 +153,7 @@ fn handle_client_to_server(
     downstream: &UnixStream,
     upstream: &UnixStream,
     objects: &Arc<Mutex<HashMap<u32, ObjType>>>,
-    _xdgwmbase_type_id: &Arc<Mutex<Option<(u32, u32)>>>,
+    xdgwmbase_type_id: &Arc<Mutex<Option<(u32, u32)>>>,
     blocked_objects: &Arc<Mutex<HashSet<u32>>>,
     args: &Args,
 ) -> Result<(), String> {
@@ -210,7 +210,7 @@ fn handle_client_to_server(
                                         blocked.insert(obj_id);
                                         true
                                     } else if let Some((want_type_id, _version)) =
-                                        *_xdgwmbase_type_id.lock().unwrap()
+                                        *xdgwmbase_type_id.lock().unwrap()
                                     {
                                         if obj_type_id == want_type_id {
                                             objects.insert(

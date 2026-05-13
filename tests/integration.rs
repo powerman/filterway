@@ -202,6 +202,93 @@ fn wlproxy_basic_passthrough() {
     }
 }
 
+#[test]
+fn wlproxy_multiple_concurrent_connections() {
+    let dir = tempdir().unwrap();
+    let upstream = dir.path().join("upstream.sock");
+    let downstream = dir.path().join("downstream.sock");
+    let mock_listener = std::os::unix::net::UnixListener::bind(&upstream).unwrap();
+
+    // Start wlproxy.
+    let mut wlproxy = Command::new(wlproxy_binary())
+        .args([
+            "--upstream",
+            upstream.to_str().unwrap(),
+            downstream.to_str().unwrap(),
+        ])
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .expect("failed to start wlproxy");
+
+    // Connect two clients and accept their upstream connections.
+    let mut client1 = connect_with_retry(&downstream, Duration::from_secs(5));
+    let (mut compositor1, _) = mock_listener.accept().unwrap();
+
+    let mut client2 = connect_with_retry(&downstream, Duration::from_secs(5));
+    let (mut compositor2, _) = mock_listener.accept().unwrap();
+
+    for c in [&client1, &client2, &compositor1, &compositor2] {
+        c.set_read_timeout(Some(Duration::from_secs(2))).unwrap();
+    }
+
+    // Send message client1 → compositor1.
+    let msg1 = Packet {
+        id: 1,
+        opcode: 0,
+        body: vec![0x11, 0x22, 0x00, 0x00],
+    };
+    write_packet(&mut client1, &msg1).unwrap();
+    assert_eq!(
+        read_packet(&mut compositor1).unwrap().unwrap(),
+        msg1,
+        "client1 → compositor1"
+    );
+
+    // Send message client2 → compositor2.
+    let msg2 = Packet {
+        id: 1,
+        opcode: 0,
+        body: vec![0x33, 0x44, 0x00, 0x00],
+    };
+    write_packet(&mut client2, &msg2).unwrap();
+    assert_eq!(
+        read_packet(&mut compositor2).unwrap().unwrap(),
+        msg2,
+        "client2 → compositor2"
+    );
+
+    // Send message compositor1 → client1.
+    let reply1 = Packet {
+        id: 1,
+        opcode: 0,
+        body: vec![0xAA],
+    };
+    write_packet(&mut compositor1, &reply1).unwrap();
+    assert_eq!(
+        read_packet(&mut client1).unwrap().unwrap(),
+        reply1,
+        "compositor1 → client1"
+    );
+
+    // Send message compositor2 → client2.
+    let reply2 = Packet {
+        id: 1,
+        opcode: 0,
+        body: vec![0xBB],
+    };
+    write_packet(&mut compositor2, &reply2).unwrap();
+    assert_eq!(
+        read_packet(&mut client2).unwrap().unwrap(),
+        reply2,
+        "compositor2 → client2"
+    );
+
+    // Cleanup.
+    wlproxy.kill().unwrap();
+    let _ = wlproxy.wait_with_output();
+}
+
 // ---------------------------------------------------------------------------
 // Helpers for wlproxy end-to-end tests
 // ---------------------------------------------------------------------------

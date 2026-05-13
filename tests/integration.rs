@@ -552,6 +552,83 @@ fn wlproxy_app_id_prefix() {
 }
 
 #[test]
+fn wlproxy_empty_app_id() {
+    let dir = tempdir().unwrap();
+    let mock_listener =
+        std::os::unix::net::UnixListener::bind(dir.path().join("upstream.sock")).unwrap();
+
+    let (wlproxy, mut compositor, mut client) =
+        spawn_wlproxy(&["--app-id", "fallback"], dir.path(), &mock_listener);
+
+    build_object_chain(&mut client, &mut compositor);
+
+    // Client sends set_app_id with empty string.
+    {
+        let mut body = vec![];
+        proto::write_arg_string(&mut body, "").unwrap();
+        write_packet(
+            &mut client,
+            &Packet {
+                id: 5,
+                opcode: 3,
+                body,
+            },
+        )
+        .unwrap();
+    }
+    let modified = read_packet(&mut compositor).unwrap().unwrap();
+    let mut cursor = std::io::Cursor::new(&modified.body[..]);
+    let replaced = proto::read_arg_string(&mut cursor).unwrap();
+    assert_eq!(
+        replaced.as_deref(),
+        Some("fallback"),
+        "empty app_id should be replaced: got {replaced:?}"
+    );
+
+    cleanup_wlproxy(wlproxy);
+}
+
+#[test]
+fn wlproxy_empty_title_prefix() {
+    let dir = tempdir().unwrap();
+    let mock_listener =
+        std::os::unix::net::UnixListener::bind(dir.path().join("upstream.sock")).unwrap();
+
+    let (wlproxy, mut compositor, mut client) = spawn_wlproxy(
+        &["--title", "pfx-", "--prefix-title"],
+        dir.path(),
+        &mock_listener,
+    );
+
+    build_object_chain(&mut client, &mut compositor);
+
+    // Client sends set_title with empty string.
+    {
+        let mut body = vec![];
+        proto::write_arg_string(&mut body, "").unwrap();
+        write_packet(
+            &mut client,
+            &Packet {
+                id: 5,
+                opcode: 2,
+                body,
+            },
+        )
+        .unwrap();
+    }
+    let modified = read_packet(&mut compositor).unwrap().unwrap();
+    let mut cursor = std::io::Cursor::new(&modified.body[..]);
+    let replaced = proto::read_arg_string(&mut cursor).unwrap();
+    assert_eq!(
+        replaced.as_deref(),
+        Some("pfx-"),
+        "empty title should be prefixed: got {replaced:?}"
+    );
+
+    cleanup_wlproxy(wlproxy);
+}
+
+#[test]
 fn wlproxy_title_prefix() {
     let dir = tempdir().unwrap();
     let mock_listener =

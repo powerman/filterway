@@ -1,5 +1,5 @@
 use {
-    aargvark::{vark_explicit, Aargvark, VarkRet},
+    clap::Parser,
     rustix::{
         fd::{AsFd, FromRawFd, OwnedFd, RawFd},
         fs::{flock, OpenOptionsExt},
@@ -28,32 +28,33 @@ fn default_upstream() -> PathBuf {
     PathBuf::from(runtime_dir).join(socket_name)
 }
 
-#[derive(Aargvark, Clone)]
+#[derive(Parser, Clone)]
+#[command(name = "wlproxy")]
 struct Args {
     /// Full path to compositor Wayland socket.
-    /// Defaults to $XDG_RUNTIME_DIR/$WAYLAND_DISPLAY
-    /// (or $XDG_RUNTIME_DIR/wayland-0 if WAYLAND_DISPLAY is unset).
-    #[vark(flag = "--upstream")]
+    #[arg(long = "upstream")]
     upstream: Option<PathBuf>,
     /// Force all xdg toplevels to have the same app id
-    #[vark(flag = "--app-id")]
+    #[arg(long = "app-id")]
     app_id: Option<String>,
     /// Prefix the app id instead of replacing
-    #[vark(flag = "--prefix-app-id")]
-    prefix_app_id: Option<()>,
+    #[arg(long = "prefix-app-id")]
+    prefix_app_id: bool,
     /// Force all xdg toplevels to have the same title
-    #[vark(flag = "--title")]
+    #[arg(long = "title")]
     title: Option<String>,
     /// Prefix the title instead of replacing
-    prefix_title: Option<()>,
+    #[arg(long = "prefix-title")]
+    prefix_title: bool,
     /// Wayland interfaces to block (can be specified multiple times)
-    #[vark(flag = "--block")]
-    block: Option<String>,
+    #[arg(long = "block", value_delimiter = ',')]
+    block: Vec<String>,
     /// Suppress warnings about unknown interface names
-    #[vark(flag = "--quiet")]
-    quiet: Option<()>,
+    #[arg(long = "quiet")]
+    quiet: bool,
     /// Print debug messages
-    debug: Option<()>,
+    #[arg(long = "debug")]
+    debug: bool,
     /// Full path for the new Wayland socket
     downstream: PathBuf,
 }
@@ -74,37 +75,6 @@ fn known_protocols() -> &'static [&'static str] {
     })
 }
 
-fn preprocess_args() -> Vec<String> {
-    let args: Vec<String> = std::env::args().collect();
-    if args.len() <= 1 {
-        return args;
-    }
-
-    let mut block_values = Vec::new();
-    let mut remaining = Vec::new();
-    let mut i = 1;
-
-    while i < args.len() {
-        if args[i] == "--block" {
-            i += 1;
-            if i < args.len() && !args[i].starts_with("--") {
-                block_values.push(args[i].clone());
-            }
-        } else {
-            remaining.push(args[i].clone());
-        }
-        i += 1;
-    }
-
-    let mut result = vec![args[0].clone()];
-    result.extend(remaining);
-    if !block_values.is_empty() {
-        result.push("--block".to_string());
-        result.push(block_values.join(","));
-    }
-    result
-}
-
 trait Errorize<T> {
     fn context(self, text: &str) -> Result<T, String>;
 }
@@ -118,21 +88,16 @@ impl<T, E: Display> Errorize<T> for Result<T, E> {
     }
 }
 
-fn is_blocked_interface(name: &str, block: &Option<String>) -> bool {
-    block
-        .as_deref()
-        .is_some_and(|list| list.split(',').any(|b| b == name))
+fn is_blocked_interface(name: &str, block: &[String]) -> bool {
+    block.iter().any(|b| b == name)
 }
 
-fn validate_interfaces(block: &Option<String>, quiet: bool) {
-    let Some(list) = block.as_deref() else {
-        return;
-    };
-    if quiet {
+fn validate_interfaces(block: &[String], quiet: bool) {
+    if quiet || block.is_empty() {
         return;
     }
-    for name in list.split(',') {
-        if !known_protocols().contains(&name) {
+    for name in block {
+        if !known_protocols().contains(&name.as_str()) {
             eprintln!(
                 "Warning: unknown Wayland interface \"{}\" in --block list",
                 name
@@ -207,7 +172,7 @@ fn handle_client_to_server(
                 true
             } else {
                 let o = objects.get(&packet.id).cloned();
-                if args.debug.is_some() {
+                if args.debug {
                     eprintln!(
                         "Received packet from downstream for tracked object {:?} with {} ancillary FDs: {:?}",
                         o,
@@ -239,7 +204,7 @@ fn handle_client_to_server(
 
                                 if let Some(ref name) = interface_name {
                                     if is_blocked_interface(name, &args.block) {
-                                        if args.debug.is_some() {
+                                        if args.debug {
                                             eprintln!("Blocked bind for interface: {}", name);
                                         }
                                         blocked.insert(obj_id);
@@ -309,7 +274,7 @@ fn handle_client_to_server(
                                                 read_arg_string(&mut packet.body.as_slice())
                                                     .context("Error reading app id message body")?;
                                             packet.body.clear();
-                                            let new_title = if args.prefix_title.is_some() {
+                                            let new_title = if args.prefix_title {
                                                 format!(
                                                     "{}{}",
                                                     title,
@@ -320,7 +285,7 @@ fn handle_client_to_server(
                                             };
                                             proto::write_arg_string(&mut packet.body, &new_title)
                                                 .unwrap();
-                                            if args.debug.is_some() {
+                                            if args.debug {
                                                 eprintln!(
                                                     "Modified title; new message: {:?}",
                                                     packet
@@ -334,7 +299,7 @@ fn handle_client_to_server(
                                                 read_arg_string(&mut packet.body.as_slice())
                                                     .context("Error reading app id message body")?;
                                             packet.body.clear();
-                                            let new_app_id = if args.prefix_app_id.is_some() {
+                                            let new_app_id = if args.prefix_app_id {
                                                 format!(
                                                     "{}{}",
                                                     app_id,
@@ -345,7 +310,7 @@ fn handle_client_to_server(
                                             };
                                             proto::write_arg_string(&mut packet.body, &new_app_id)
                                                 .unwrap();
-                                            if args.debug.is_some() {
+                                            if args.debug {
                                                 eprintln!(
                                                     "Modified app id; new message: {:?}",
                                                     packet
@@ -404,7 +369,7 @@ fn handle_server_to_client(
     })
     .context("Error reading message")?
     {
-        if args.debug.is_some() {
+        if args.debug {
             eprintln!(
                 "Received packet from upstream with {} ancillary FDs: {:?}",
                 ancillary_accum.len(),
@@ -442,12 +407,8 @@ fn handle_server_to_client(
                 }
 
                 if let Some(ref name) = type_str {
-                    if args
-                        .block
-                        .as_deref()
-                        .is_some_and(|list| list.split(',').any(|b| b == name))
-                    {
-                        if args.debug.is_some() {
+                    if !args.block.is_empty() && args.block.iter().any(|b| b == name) {
+                        if args.debug {
                             eprintln!("Blocked global: {}", name);
                         }
                         for fd in ancillary_accum.drain(..) {
@@ -472,23 +433,9 @@ fn handle_server_to_client(
 }
 
 fn main() -> Result<(), String> {
-    let processed_args = preprocess_args();
-    let args = match vark_explicit::<Args>(
-        Some(processed_args[0].clone()),
-        processed_args[1..].to_vec(),
-    ) {
-        Ok(VarkRet::Ok(a)) => a,
-        Ok(VarkRet::Help(h)) => {
-            println!("{}", h.render());
-            return Ok(());
-        }
-        Err(e) => {
-            eprintln!("{:?}", e);
-            std::process::exit(1);
-        }
-    };
+    let args = Args::parse();
 
-    validate_interfaces(&args.block, args.quiet.is_some());
+    validate_interfaces(&args.block, args.quiet);
 
     let lock_path = args.downstream.with_extension("lock");
     let filelock = File::options()
@@ -515,7 +462,7 @@ fn main() -> Result<(), String> {
     // If the system booted with systemd, inform systemd that wlproxy is ready using
     // notify. Other services that depend on wlproxy can start now.
     if let Ok(true) = sd_notify::booted() {
-        if args.debug.is_some() {
+        if args.debug {
             eprintln!("Init detected as being systemd. Notifying of readiness.");
         }
         if let Err(e) = sd_notify::notify(&[NotifyState::Ready]) {

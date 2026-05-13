@@ -8,7 +8,7 @@ repository = "https://github.com/powerman/wlproxy"
 license = "MIT"
 
 [dependencies]
-aargvark = "0.9"
+clap = { version = "4", features = ["derive"] }
 defer = "0.2"
 libc = "0.2"
 sd-notify = "0.5"

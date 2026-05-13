@@ -17,9 +17,9 @@ that use its downstream socket.
 
 ### Key components
 
-- **`Args`** — CLI arguments: `--upstream` (optional, defaults to
-  `$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY` or `$XDG_RUNTIME_DIR/wayland-0`),
-  `downstream` (positional),
+- **`Args`** — CLI arguments (parsed via `clap`): `--upstream` (optional,
+  defaults to `$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY` or
+  `$XDG_RUNTIME_DIR/wayland-0`), `downstream` (positional),
   `--app-id` / `--title` (replace or prefix — via `--prefix-app-id` / `--prefix-title`),
   `--debug`.
 - **`Packet`** — Wayland message: `id` (object), `opcode`, `body`.

@@ -21,14 +21,20 @@ use uds::UnixStreamExt;
 use wlproxy::proto::{self, read_arg_string};
 use wlproxy::ObjType;
 
+fn default_upstream() -> PathBuf {
+    let runtime_dir =
+        std::env::var("XDG_RUNTIME_DIR").expect("XDG_RUNTIME_DIR must be set for Wayland");
+    let socket_name = std::env::var("WAYLAND_DISPLAY").unwrap_or_else(|_| "wayland-0".to_string());
+    PathBuf::from(runtime_dir).join(socket_name)
+}
+
 #[derive(Aargvark, Clone)]
 struct Args {
-    /// Full path to primary compositor Wayland socket (like `/run/user/1000/wayland-0`)
+    /// Full path to compositor Wayland socket.
+    /// Defaults to $XDG_RUNTIME_DIR/$WAYLAND_DISPLAY
+    /// (or $XDG_RUNTIME_DIR/wayland-0 if WAYLAND_DISPLAY is unset).
     #[vark(flag = "--upstream")]
-    upstream: PathBuf,
-    /// Full path for new Wayland socket
-    #[vark(flag = "--downstream")]
-    downstream: PathBuf,
+    upstream: Option<PathBuf>,
     /// Force all xdg toplevels to have the same app id
     #[vark(flag = "--app-id")]
     app_id: Option<String>,
@@ -48,6 +54,8 @@ struct Args {
     quiet: Option<()>,
     /// Print debug messages
     debug: Option<()>,
+    /// Full path for the new Wayland socket
+    downstream: PathBuf,
 }
 
 fn known_protocols() -> &'static [&'static str] {
@@ -520,8 +528,9 @@ fn main() -> Result<(), String> {
         let (downstream, _) = downstream
             .accept()
             .context("Error accepting downstream connection")?;
+        let upstream_path = args.upstream.clone().unwrap_or_else(default_upstream);
         let upstream =
-            UnixStream::connect(&args.upstream).context("Error creating upstream connection")?;
+            UnixStream::connect(&upstream_path).context("Error creating upstream connection")?;
 
         let objects = Arc::new(Mutex::new(HashMap::new()));
         objects.lock().unwrap().insert(1, ObjType::Display);

@@ -51,42 +51,41 @@ Or download a pre-built binary from the
 ## Usage
 
 ```text
-Usage: wlproxy ...FLAGS
+Usage: wlproxy DOWNSTREAM [ ...FLAGS]
 
-    --upstream <PATH>    Full path to primary compositor Wayland socket
-                         (like `/run/user/1000/wayland-0`)
-    --downstream <PATH>  Full path for new Wayland socket
-    [--app-id <STRING>]  Force all xdg toplevels to have the same app id
-    [--prefix-app-id]    Prefix the app id instead of replacing
-    [--title <STRING>]   Force all xdg toplevels to have the same title
-    [--prefix-title]     Prefix the title instead of replacing
-    [--block <STRING>]   Wayland interfaces to block (can be specified multiple times)
-    [--quiet]            Suppress warnings about unknown interface names
-    [--debug]            Print debug messages
+    --upstream <PATH>       Full path to compositor Wayland socket.
+                            Defaults to $XDG_RUNTIME_DIR/$WAYLAND_DISPLAY
+                            (or $XDG_RUNTIME_DIR/wayland-0).
+    <DOWNSTREAM>            Full path for the new Wayland socket
+    [--app-id <STRING>]     Force all xdg toplevels to have the same app id
+    [--prefix-app-id]       Prefix the app id instead of replacing
+    [--title <STRING>]      Force all xdg toplevels to have the same title
+    [--prefix-title]        Prefix the title instead of replacing
+    [--block <STRING>]      Wayland interfaces to block (can be specified multiple times)
+    [--quiet]               Suppress warnings about unknown interface names
+    [--debug]               Print debug messages
 ```
 
 ### Basic passthrough
 
 ```sh
-wlproxy --upstream /run/user/1000/wayland-0 \
-    --downstream /run/user/1000/wayland-filtered
+wlproxy /run/user/1000/wayland-filtered
 WAYLAND_DISPLAY=wayland-filtered my-app
 ```
+
+The `--upstream` flag is optional and defaults to
+`$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY` (or `$XDG_RUNTIME_DIR/wayland-0`).
 
 ### Replace app_id
 
 ```sh
-wlproxy --upstream /run/user/1000/wayland-0 \
-    --downstream /run/user/1000/wayland-filtered \
-    --app-id org.example.testid
+wlproxy /run/user/1000/wayland-filtered --app-id org.example.testid
 ```
 
 ### Prefix app_id
 
 ```sh
-wlproxy --upstream /run/user/1000/wayland-0 \
-    --downstream /run/user/1000/wayland-filtered \
-    --app-id pfx- --prefix-app-id
+wlproxy /run/user/1000/wayland-filtered --app-id pfx- --prefix-app-id
 ```
 
 ### Block privacy-sensitive interfaces
@@ -96,8 +95,7 @@ you can block Wayland interfaces that could leak sensitive data
 or compromise the user's session:
 
 ```sh
-wlproxy --upstream /run/user/1000/wayland-0 \
-    --downstream /run/user/1000/wayland-filtered \
+wlproxy /run/user/1000/wayland-filtered \
     --block zwlr_screencopy_manager_v1 \
     --block zkde_screencast_unstable_v1 \
     --block ext_data_control_manager_v1 \

@@ -150,7 +150,6 @@ fn wlproxy_basic_passthrough() {
         .args([
             "--upstream",
             upstream.to_str().unwrap(),
-            "--downstream",
             downstream.to_str().unwrap(),
         ])
         .stdout(std::process::Stdio::null())
@@ -207,7 +206,7 @@ fn wlproxy_basic_passthrough() {
 // Helpers for wlproxy end-to-end tests
 // ---------------------------------------------------------------------------
 
-/// Spawn wlproxy with the given extra args (beyond --upstream/--downstream)
+/// Spawn wlproxy with the given extra args (beyond --upstream)
 /// and accept its upstream connection against the mock listener.
 /// Returns (wlproxy_child, compositor_stream, client_stream).
 fn spawn_wlproxy(
@@ -222,7 +221,6 @@ fn spawn_wlproxy(
         .args([
             "--upstream",
             upstream.to_str().unwrap(),
-            "--downstream",
             downstream.to_str().unwrap(),
         ])
         .args(extra_args)
